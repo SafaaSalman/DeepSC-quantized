@@ -1,0 +1,19 @@
+# Single source of truth for the quantized DeepSC chain. Paths are relative to DeepSC-quantized/.
+repo_dir: ../DeepSC-continous
+checkpoint: checkpoints/deepsc-Rayleigh/checkpoint_80.pth
+model: {num_layers: 4, d_model: 128, dff: 512, num_heads: 8, dropout: 0.1}
+batch_size: 64                 # same as performance.py
+max_len: 30                    # greedy decode length, as performance.py
+dev_subset: 5000               # first N test sentences for sweeps; null = full 120 726
+b: 4                           # bits per latent value
+D: 16                          # real latents per token
+A: null                        # filled by calibrate.py (expected ~4.54 for batch 64, pads included)
+percentile: 99.9
+calibration_file: results/s1/calibration.json
+modulations: [bpsk, pam16]
+ldpc: {dv: 3, dc: 6, n: 1008, k: 504, bp_iters: 50, decoder: sum_product, llr_clip: 20.0, min_sum_alpha: 0.8}
+fading: {model: rayleigh, draw: sentence}     # 'batch' only for the repo-original reference run
+channels: [awgn, rayleigh]
+snr_grid_db: [0, 3, 6, 9, 12, 15, 18]                # matches performance.py
+snr_fine_db: [-3, -1, 1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 20, 22, 24]
+seed: 1234

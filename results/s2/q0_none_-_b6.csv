@@ -1,0 +1,16 @@
+# variant=q0
+# channel=none
+# h_draw=-
+# seed=1234
+# passes=1
+# subset=5000
+# checkpoint=checkpoint_80.pth
+# ckpt_sha256=15fb163ec2c286fab8da0180467fb341da4c54f3c6f31398ff01095224cb7aa6
+# A=4.540448188781738
+# b=6
+# delta=0.14414121234227742
+# ldpc=-
+# snr_convention=sigma=1/sqrt(2*10^(L/10)) per real dim; unit-energy constellations; Es/sigma^2 = L+3 dB
+# config={"repo_dir": "../DeepSC-continous", "checkpoint": "checkpoints/deepsc-Rayleigh/checkpoint_80.pth", "model": {"num_layers": 4, "d_model": 128, "dff": 512, "num_heads": 8, "dropout": 0.1}, "batch_size": 64, "max_len": 30, "dev_subset": 5000, "b": 4, "D": 16, "A": null, "percentile": 99.9, "calibration_file": "results/s1/calibration.json", "modulations": ["bpsk", "pam16"], "ldpc": {"dv": 3, "dc": 6, "n": 1008, "k": 504, "bp_iters": 50, "decoder": "sum_product", "llr_clip": 20.0, "min_sum_alpha": 0.8}, "fading": {"model": "rayleigh", "draw": "sentence"}, "channels": ["awgn", "rayleigh"], "snr_grid_db": [0, 3, 6, 9, 12, 15, 18], "snr_fine_db": [-3, -1, 1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 20, 22, 24], "seed": 1234}
+variant,channel,h_draw,snr_db,passes,n_sentences,b,A,bleu1,bleu2,bleu3,bleu4,ber,level_err_rate,fer,bp_iters_mean,mse_all,mse_nonpad,uses_per_token_all,uses_per_token_nonpad,pad_bits_frac,time_s
+q0,none,-,,1,5000,6,4.540448188781738,0.8020019569213438,0.7766267111118978,0.7469416640954583,0.718684927449495,,,,,0.0031973035744686067,0.0023022575524800294,0.0,0.0,0.0,34.40917444229126

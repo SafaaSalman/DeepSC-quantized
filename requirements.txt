@@ -1,0 +1,9 @@
+torch
+numpy
+scipy
+pandas
+pyyaml
+matplotlib
+nltk
+w3lib
+pytest

@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "metric": "bleu1",
+    "q0": 0.8689265319336522,
+    "c_inf_noiseless_analog": 0.8223484899394611,
+    "h_draw": "sentence",
+    "snr_convention": "label L: sigma = 1/sqrt(2*10^(L/10)) per real dim, unit-energy constellations, Es/sigma^2 = L+3 dB",
+    "view2_shift": "x = L + 10*log10(uses_per_token/16)"
+  },
+  "crossover": {
+    "view1": {
+      "u_bpsk": {
+        "crossover_snr_db": 14.358356504527027,
+        "status": "crosses",
+        "uses_per_token": 64.0,
+        "shift_db": 0.0
+      },
+      "u_pam16": {
+        "crossover_snr_db": 20.159849125687376,
+        "status": "crosses",
+        "uses_per_token": 16.0,
+        "shift_db": 0.0
+      },
+      "c_bpsk": {
+        "crossover_snr_db": 0.6741948374157203,
+        "status": "crosses",
+        "uses_per_token": 130.50233039875712,
+        "shift_db": 0.0
+      },
+      "c_pam16": {
+        "crossover_snr_db": 20.270131509376952,
+        "status": "crosses",
+        "uses_per_token": 32.62558259968928,
+        "shift_db": 0.0
+      }
+    },
+    "view2": {
+      "u_bpsk": {
+        "crossover_snr_db": 20.679576555875734,
+        "status": "crosses",
+        "uses_per_token": 64.0,
+        "shift_db": 6.020599913279624
+      },
+      "u_pam16": {
+        "crossover_snr_db": 20.159849125687376,
+        "status": "crosses",
+        "uses_per_token": 16.0,
+        "shift_db": 0.0
+      },
+      "c_bpsk": {
+        "crossover_snr_db": 19.636221054703725,
+        "status": "crosses",
+        "uses_per_token": 130.50233039875712,
+        "shift_db": 9.114982843462245
+      },
+      "c_pam16": {
+        "crossover_snr_db": 23.086896472594233,
+        "status": "crosses",
+        "uses_per_token": 32.62558259968928,
+        "shift_db": 3.094382930182622
+      }
+    },
+    "view3": {
+      "u_pam16": {
+        "crossover_snr_db": 20.159849125687376,
+        "status": "crosses",
+        "uses_per_token": 16.0,
+        "shift_db": 0.0
+      }
+    }
+  }
+}
