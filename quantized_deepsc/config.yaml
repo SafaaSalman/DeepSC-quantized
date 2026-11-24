@@ -12,6 +12,7 @@ percentile: 99.9
 calibration_file: results/s1/calibration.json
 modulations: [bpsk, pam16]
 ldpc: {dv: 3, dc: 6, n: 1008, k: 504, bp_iters: 50, decoder: sum_product, llr_clip: 20.0, min_sum_alpha: 0.8}
+grand: {dir: ../../BitSemCom/grand, code: "crc:0x9eb2:128:112", max_queries: 2000, variant: 1line}   # g_* variants
 fading: {model: rayleigh, draw: sentence}     # 'batch' only for the repo-original reference run
 channels: [awgn, rayleigh]
 snr_grid_db: [0, 3, 6, 9, 12, 15, 18]                # matches performance.py

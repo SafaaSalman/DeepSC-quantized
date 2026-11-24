@@ -6,9 +6,12 @@
     u_pam16  quantise -> Gray bits -> 16-PAM -> channel -> hard decision -> dequantise
     c_bpsk   quantise -> Gray bits -> LDPC -> BPSK   -> channel -> LLR -> BP -> dequantise
     c_pam16  quantise -> Gray bits -> LDPC -> 16-PAM -> channel -> max-log LLR -> BP -> dequantise
+    g_bpsk   quantise -> Gray bits -> short high-rate code -> BPSK   -> channel -> LLR -> ORBGRAND -> dequantise
+    g_pam16  quantise -> Gray bits -> short high-rate code -> 16-PAM -> channel -> max-log LLR -> ORBGRAND -> dequantise
 
-No interleaver is used: the fading gain is constant over a sentence and the AWGN channel is
-memoryless, so there is nothing to spread.
+In the g_ variants a block that ORBGRAND abandons keeps its hard decisions, i.e. it falls back to
+what the uncoded link would have delivered for those bits.  No interleaver is used: the fading
+gain is constant over a sentence and the AWGN channel is memoryless, so there is nothing to spread.
 """
 from __future__ import annotations
 
@@ -17,7 +20,7 @@ import torch
 from .channel import awgn, rayleigh_zf
 from .framing import frame, unframe
 
-VARIANTS = ["c0", "q0", "u_bpsk", "u_pam16", "c_bpsk", "c_pam16"]
+VARIANTS = ["c0", "q0", "u_bpsk", "u_pam16", "c_bpsk", "c_pam16", "g_bpsk", "g_pam16"]
 
 
 def apply_channel(x: torch.Tensor, sigma: float, channel: str, h_draw: str, link=None):
@@ -34,11 +37,12 @@ def apply_channel(x: torch.Tensor, sigma: float, channel: str, h_draw: str, link
 
 
 class DigitalChain:
-    def __init__(self, link, quantizer, pam_bpsk, pam16, ldpc=None):
+    def __init__(self, link, quantizer, pam_bpsk, pam16, ldpc=None, grand=None):
         self.link = link
         self.Q = quantizer
         self.pam = {"bpsk": pam_bpsk, "pam16": pam16}
         self.ldpc = ldpc
+        self.grand = grand
 
     @torch.no_grad()
     def run(self, variant: str, t: torch.Tensor, sigma: float, channel: str, h_draw: str):
@@ -79,6 +83,26 @@ class DigitalChain:
             st["block_errors"] = int((info_hat != blocks).any(-1).sum())
             st["blocks_converged"] = int(conv.sum())
             st["iters_sum"] = float(iters.sum())
+            st["pad_bits"] = B * n_pad
+        elif variant.startswith("g_"):
+            if self.grand is None:
+                raise ValueError("GRAND variant needs a GrandCode")
+            if h_draw == "repo":
+                raise ValueError("GRAND variants need |h|^2 for the LLR; use h_draw=sentence/batch/symbol")
+            blocks, nblk, n_pad = frame(bits, self.grand.k)    # [B*nblk, k]
+            cw = self.grand.encode(blocks)                       # [B*nblk, n]
+            x = pam.modulate(cw.reshape(B, -1))
+            y, h2 = apply_channel(x, sigma, channel, h_draw, self.link)
+            llr = pam.llr_maxlog(y, sigma * sigma, h2)           # [B, nblk*n]
+            dec, abandoned, queries = self.grand.decode(llr.reshape(B * nblk, -1))
+            info_hat = dec[:, :self.grand.k]
+            bits_hat = unframe(info_hat, B, Nb)
+            wrong = (info_hat != blocks).any(-1)
+            st["n_blocks"] = B * nblk
+            st["block_errors"] = int(wrong.sum())
+            st["grand_abandoned"] = int(abandoned.sum())
+            st["grand_miscorrected"] = int((wrong & ~abandoned).sum())  # a codeword, but not the one sent
+            st["grand_queries"] = int(queries.sum())
             st["pad_bits"] = B * n_pad
         else:
             raise ValueError(f"unknown variant {variant!r}")

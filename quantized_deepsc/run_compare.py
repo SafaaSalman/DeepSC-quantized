@@ -22,10 +22,12 @@ from .deepsc_io import resolve
 
 ANALOG_USES = 16.0
 LABELS = {"c0": "C0 analog DeepSC", "q0": "Q0 quantisation-only ceiling", "u_bpsk": "U-BPSK (uncoded, hard)",
-          "u_pam16": "U-PAM16 (uncoded, hard)", "c_bpsk": "C-BPSK (LDPC 1/2)", "c_pam16": "C-PAM16 (LDPC 1/2)"}
+          "u_pam16": "U-PAM16 (uncoded, hard)", "c_bpsk": "C-BPSK (LDPC 1/2)", "c_pam16": "C-PAM16 (LDPC 1/2)",
+          "g_bpsk": "G-BPSK (CRC + ORBGRAND)", "g_pam16": "G-PAM16 (CRC + ORBGRAND)"}
 STYLE = {"c0": ("k", "-", "o"), "u_bpsk": ("#1f77b4", "--", "s"), "u_pam16": ("#2ca02c", "--", "^"),
-         "c_bpsk": ("#d62728", "-", "s"), "c_pam16": ("#ff7f0e", "-", "^")}
-DIGITAL = ["u_bpsk", "u_pam16", "c_bpsk", "c_pam16"]
+         "c_bpsk": ("#d62728", "-", "s"), "c_pam16": ("#ff7f0e", "-", "^"),
+         "g_bpsk": ("#9467bd", "-.", "s"), "g_pam16": ("#8c564b", "-.", "^")}
+DIGITAL = ["u_bpsk", "u_pam16", "c_bpsk", "c_pam16", "g_bpsk", "g_pam16"]
 
 
 def load_runs(dirs) -> pd.DataFrame:

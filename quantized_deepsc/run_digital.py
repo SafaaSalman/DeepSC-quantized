@@ -3,6 +3,7 @@
     python -m quantized_deepsc.run_digital --variant c0 --channel rayleigh --h-draw sentence --subset 5000
     python -m quantized_deepsc.run_digital --variant q0 --channel none --b 4
     python -m quantized_deepsc.run_digital --variant u_pam16 c_bpsk --channel rayleigh --fine
+    python -m quantized_deepsc.run_digital --variant u_bpsk g_bpsk --channel awgn --grand-budget 2000
 
 One CSV per variant in --out-dir, with a '#'-comment header (seed, checkpoint hash, config).
 """
@@ -21,12 +22,14 @@ import torch
 
 from .chain import VARIANTS, DigitalChain
 from .deepsc_io import DeepSCLink, load_config, resolve
+from .grand_code import GrandCode
 from .ldpc import LDPC
 from .modulation import PAM
 from .quant import ScalarQuantizer
 
 
-def build_chain(link, cfg, b=None, A=None, decoder=None, bp_iters=None, need_ldpc=True):
+def build_chain(link, cfg, b=None, A=None, decoder=None, bp_iters=None, need_ldpc=True, need_grand=False,
+                grand_code=None, grand_budget=None):
     b = b or int(cfg["b"])
     if A is None:
         A = cfg.get("A")
@@ -45,7 +48,12 @@ def build_chain(link, cfg, b=None, A=None, decoder=None, bp_iters=None, need_ldp
                     cache_dir=resolve("results/ldpc"), device=dev, bp_iters=bp_iters or lc["bp_iters"],
                     decoder=decoder or lc["decoder"], llr_clip=lc.get("llr_clip", 20.0),
                     min_sum_alpha=lc.get("min_sum_alpha", 0.8))
-    return DigitalChain(link, Q, PAM(2, dev), PAM(16, dev), ldpc), Q, ldpc
+    grand = None
+    if need_grand:
+        gc = cfg["grand"]
+        grand = GrandCode(resolve(gc["dir"]), spec=grand_code or gc["code"],
+                          max_queries=grand_budget or gc["max_queries"], variant=gc.get("variant", "1line"))
+    return DigitalChain(link, Q, PAM(2, dev), PAM(16, dev), ldpc, grand), Q, ldpc
 
 
 def run_variant(link, chain, variant, channel, h_draw, snrs, subset, passes, seed, max_len, verbose=True, on_row=None):
@@ -86,6 +94,10 @@ def run_variant(link, chain, variant, channel, h_draw, snrs, subset, passes, see
         row["level_err_rate"] = acc["level_errors"] / acc["n_levels"] if acc.get("n_levels") else float("nan")
         row["fer"] = acc["block_errors"] / acc["n_blocks"] if acc.get("n_blocks") else float("nan")
         row["bp_iters_mean"] = acc["iters_sum"] / acc["n_blocks"] if acc.get("iters_sum") else float("nan")
+        is_grand = acc.get("grand_queries") is not None
+        row["abandon_rate"] = acc["grand_abandoned"] / acc["n_blocks"] if is_grand else float("nan")
+        row["miscorrect_rate"] = acc["grand_miscorrected"] / acc["n_blocks"] if is_grand else float("nan")
+        row["queries_mean"] = acc["grand_queries"] / acc["n_blocks"] if is_grand else float("nan")
         row["mse_all"] = acc["mse_all_sum"] / acc["n_all"]
         row["mse_nonpad"] = acc["mse_nonpad_sum"] / acc["n_nonpad"]
         row["uses_per_token_all"] = acc["real_uses"] / acc["tokens_all"]
@@ -96,8 +108,9 @@ def run_variant(link, chain, variant, channel, h_draw, snrs, subset, passes, see
         if on_row is not None:
             on_row(rows)
         if verbose:
+            extra = f"aband={row['abandon_rate']:.2e}  miscorr={row['miscorrect_rate']:.2e}  " if is_grand else ""
             print(f"[{variant:8s} {channel:8s} {row['h_draw']:8s}] snr={snr:6.1f} dB  BLEU-1={row['bleu1']:.4f}  "
-                  f"BER={row['ber']:.2e}  LER={row['level_err_rate']:.2e}  FER={row['fer']:.2e}  "
+                  f"BER={row['ber']:.2e}  LER={row['level_err_rate']:.2e}  FER={row['fer']:.2e}  {extra}"
                   f"MSE={row['mse_nonpad']:.4f}  uses/tok={row['uses_per_token_all']:.1f}  ({row['time_s']:.0f}s)", flush=True)
         if channel == "none":
             break
@@ -129,6 +142,8 @@ def main(argv=None):
     p.add_argument("--A", type=float, default=None)
     p.add_argument("--decoder", default=None, choices=[None, "sum_product", "min_sum"])
     p.add_argument("--bp-iters", type=int, default=None)
+    p.add_argument("--grand-code", default=None, help="g_* variants: code spec, e.g. crc:0x9eb2:128:112 (default: config)")
+    p.add_argument("--grand-budget", type=int, default=None, help="g_* variants: ORBGRAND query budget per block (default: config)")
     p.add_argument("--out-dir", default="results/runs")
     p.add_argument("--tag", default="")
     p.add_argument("--config", default=None)
@@ -148,8 +163,10 @@ def main(argv=None):
 
     link = DeepSCLink(cfg)
     need_ldpc = any(v.startswith("c_") for v in args.variant)
-    chain, Q, ldpc = build_chain(link, cfg, args.b, args.A, args.decoder, args.bp_iters, need_ldpc)
-    print(f"checkpoint {link.ckpt_path.name} sha256={link.ckpt_sha256[:12]}  {Q}  {ldpc if ldpc else ''}")
+    need_grand = any(v.startswith("g_") for v in args.variant)
+    chain, Q, ldpc = build_chain(link, cfg, args.b, args.A, args.decoder, args.bp_iters, need_ldpc, need_grand,
+                                 args.grand_code, args.grand_budget)
+    print(f"checkpoint {link.ckpt_path.name} sha256={link.ckpt_sha256[:12]}  {Q}  {ldpc if ldpc else ''}  {chain.grand or ''}")
     print(f"subset={subset or 'full'}  passes={args.passes}  channel={args.channel}  h_draw={args.h_draw}  snrs={snrs}")
 
     out_dir = resolve(args.out_dir)
@@ -161,6 +178,7 @@ def main(argv=None):
         header = {"variant": variant, "channel": args.channel, "h_draw": hd, "seed": seed, "passes": args.passes,
                   "subset": subset or "full", "checkpoint": link.ckpt_path.name, "ckpt_sha256": link.ckpt_sha256,
                   "A": Q.A, "b": Q.b, "delta": Q.delta, "ldpc": repr(ldpc) if ldpc else "-",
+                  "grand": repr(chain.grand) if chain.grand and variant.startswith("g_") else "-",
                   "snr_convention": "sigma=1/sqrt(2*10^(L/10)) per real dim; unit-energy constellations; Es/sigma^2 = L+3 dB",
                   "config": json.dumps(cfg)}
         # the CSV is rewritten after every SNR point so an interrupted run keeps its finished points

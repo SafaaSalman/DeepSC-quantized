@@ -213,6 +213,28 @@ A good reading order is `chain.py` first (about 90 lines, the whole link at a gl
 - **16-PAM is fragile.** Its 16 levels are close together: at 18 dB on Rayleigh its bit error rate is still 10 %, and the LDPC code cannot repair that.
 - **Results are on a subset.** 5 000 of the 120 726 test sentences, one pass. Differences below about 0.006 BLEU-1 between two links are not significant.
 
+## 11. GRAND extension (branch `main` only)
+
+This branch adds a short CRC code decoded with ORBGRAND as two more variants, `g_bpsk` and `g_pam16`. None of it is in the `students` branch.
+
+| What | Where |
+|---|---|
+| Code | `quantized_deepsc/grand_code.py`, the `g_` branch in `chain.py`, `quantized_deepsc/plot_grand.py` |
+| Decoder it loads | `../../BitSemCom/grand/` (set in `config.yaml`, entry `grand`) |
+| Tests | `tests/test_grand.py` (8 tests, 35 in total) |
+| Results and discussion | `REPORT_GRAND.md`, `results/s6`, `results/s7` |
+| Planning notes | `IMPLEMENTATION_PLAN_*.md` |
+
+**Keeping the two branches in step.** Changes that students should get are committed on `students` and then merged into `main`:
+
+```
+git switch students        # edit, test, commit
+git switch main
+git merge students
+```
+
+Never merge `main` into `students`: that would bring the GRAND code and its history into the shared branch.
+
 ## References
 
 [1] H. Xie, Z. Qin, G. Y. Li and B.-H. Juang, "Deep Learning Enabled Semantic Communication Systems," *IEEE Transactions on Signal Processing*, vol. 69, pp. 2663-2675, 2021. Code: https://github.com/13274086/DeepSC
